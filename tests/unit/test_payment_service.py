@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -37,7 +37,7 @@ class TestCreatePayment:
     ):
         from app.db.models.payment import Payment
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         existing_payment = Payment(
             id=uuid.uuid4(),
