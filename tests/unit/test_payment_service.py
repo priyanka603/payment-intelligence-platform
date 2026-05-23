@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -36,6 +37,8 @@ class TestCreatePayment:
     ):
         from app.db.models.payment import Payment
 
+        now = datetime.now(timezone.utc)
+
         existing_payment = Payment(
             id=uuid.uuid4(),
             idempotency_key=payment_request.idempotency_key,
@@ -43,6 +46,8 @@ class TestCreatePayment:
             amount=1000,
             currency="eur",
             status=PaymentStatus.PENDING.value,
+            created_at=now,
+            updated_at=now,
         )
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = existing_payment
