@@ -73,10 +73,13 @@ class PaymentService:
         intent = await self._create_stripe_intent_with_retry(request)
         payment = await self._persist_payment(request, intent)
 
+        await self._apply_fraud_score(payment, request)
+
         log.info(
             "payment_created",
             payment_id=str(payment.id),
             stripe_intent_id=intent.id,
+            risk_score=payment.risk_score,
         )
 
         return CreatePaymentResponse(
@@ -164,6 +167,32 @@ class PaymentService:
                     "Integrity error but no existing record found"
                 ) from e
             return existing
+
+    async def _apply_fraud_score(
+        self,
+        payment: Payment,
+        request: CreatePaymentRequest,
+    ) -> None:
+        """
+        Score the payment for fraud and store the result.
+        Never raises — fraud scoring failure must never block a payment.
+        """
+        from app.services.ai.fraud_detection import FraudDetectionService
+
+        fraud_service = FraudDetectionService()
+        assessment = await fraud_service.score_payment(
+            amount=request.amount,
+            currency=request.currency.value,
+            customer_id=request.customer_id,
+            description=request.description,
+            metadata=request.metadata,
+        )
+
+        payment.risk_score = assessment.risk_score
+        payment.risk_flags = json.dumps(assessment.flags)
+
+        await self.db.flush()
+        await self.db.refresh(payment)
 
     async def _find_by_idempotency_key(self, key: str) -> Payment | None:
         result = await self.db.execute(

@@ -23,8 +23,10 @@ class Settings(BaseSettings):
     stripe_publishable_key: str = Field(..., description="pk_test_...")
     stripe_webhook_secret: SecretStr = Field(..., description="whsec_...")
 
-    openai_api_key: SecretStr = Field(..., description="sk-...")
+    openai_api_key: SecretStr | None = Field(None, description="sk-... (optional)")
     openai_model: str = "gpt-4o-mini"
+
+    google_api_key: SecretStr = Field(..., description="Gemini API key")
 
     redis_url: str = "redis://localhost:6379/0"
 
@@ -44,7 +46,13 @@ class Settings(BaseSettings):
 
     @property
     def openai_key(self) -> str:
+        if self.openai_api_key is None:
+            return ""
         return self.openai_api_key.get_secret_value()
+
+    @property
+    def google_key(self) -> str:
+        return self.google_api_key.get_secret_value()
 
 
 @lru_cache
