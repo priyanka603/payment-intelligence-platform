@@ -1,5 +1,7 @@
 import logging
+
 import structlog
+
 from app.core.config import get_settings
 
 

@@ -1,11 +1,11 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
 
-class PaymentStatus(str, Enum):
+class PaymentStatus(StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
     SUCCEEDED = "succeeded"
@@ -14,7 +14,7 @@ class PaymentStatus(str, Enum):
     REFUNDED = "refunded"
 
 
-class Currency(str, Enum):
+class Currency(StrEnum):
     EUR = "eur"
     USD = "usd"
     GBP = "gbp"

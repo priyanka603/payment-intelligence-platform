@@ -1,13 +1,14 @@
 import json
+
 import stripe
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.models.webhook_event import WebhookEvent
-from app.services.stripe.payment_service import PaymentService
 from app.schemas.payment import PaymentStatus
+from app.services.stripe.payment_service import PaymentService
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -26,7 +27,11 @@ class WebhookHandler:
                 settings.stripe_webhook_secret_value,
                 tolerance=300,
             )
-            logger.info("webhook_signature_verified", event_type=event.type, event_id=event.id)
+            logger.info(
+                "webhook_signature_verified",
+                event_type=event.type,
+                event_id=event.id,
+            )
             return event
         except stripe.SignatureVerificationError as e:
             logger.warning("webhook_signature_invalid", error=str(e))

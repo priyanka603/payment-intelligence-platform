@@ -2,7 +2,7 @@ import asyncio
 import json
 import random
 import uuid
-from typing import Any
+
 import stripe
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -105,11 +105,17 @@ class PaymentService:
                         idempotency_key=request.idempotency_key,
                     ),
                 )
-                logger.info("stripe_intent_created", intent_id=intent.id, attempt=attempt)
+                logger.info(
+                    "stripe_intent_created", intent_id=intent.id, attempt=attempt
+                )
                 return intent
 
             except TERMINAL_STRIPE_ERRORS as e:
-                logger.warning("stripe_terminal_error", error_type=type(e).__name__, message=str(e))
+                logger.warning(
+                    "stripe_terminal_error",
+                    error_type=type(e).__name__,
+                    message=str(e),
+                )
                 raise
 
             except RETRYABLE_STRIPE_ERRORS as e:
@@ -146,12 +152,17 @@ class PaymentService:
             await self.db.refresh(payment)
             return payment
 
-        except IntegrityError:
+        except IntegrityError as e:
             await self.db.rollback()
-            logger.info("idempotency_race_resolved", idempotency_key=request.idempotency_key)
+            logger.info(
+                "idempotency_race_resolved",
+                idempotency_key=request.idempotency_key,
+            )
             existing = await self._find_by_idempotency_key(request.idempotency_key)
             if existing is None:
-                raise RuntimeError("Integrity error but no existing record found")
+                raise RuntimeError(
+                    "Integrity error but no existing record found"
+                ) from e
             return existing
 
     async def _find_by_idempotency_key(self, key: str) -> Payment | None:
@@ -173,12 +184,16 @@ class PaymentService:
         stripe_charge_id: str | None = None,
     ) -> Payment | None:
         result = await self.db.execute(
-            select(Payment).where(Payment.stripe_payment_intent_id == stripe_intent_id)
+            select(Payment).where(
+                Payment.stripe_payment_intent_id == stripe_intent_id
+            )
         )
         payment = result.scalar_one_or_none()
 
         if payment is None:
-            logger.warning("webhook_payment_not_found", stripe_intent_id=stripe_intent_id)
+            logger.warning(
+                "webhook_payment_not_found", stripe_intent_id=stripe_intent_id
+            )
             return None
 
         payment.status = new_status.value

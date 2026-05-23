@@ -1,9 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import (
-    DateTime, Index, Integer, String, Text, UniqueConstraint, func,
-)
+from sqlalchemy import DateTime, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,15 +14,11 @@ class Payment(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
     )
-    idempotency_key: Mapped[str] = mapped_column(
-        String(255), nullable=False,
-    )
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
     stripe_payment_intent_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True, index=True
     )
-    stripe_charge_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
+    stripe_charge_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="eur")
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
