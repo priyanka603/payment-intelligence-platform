@@ -1,5 +1,6 @@
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,8 +31,11 @@ def payment_request():
 
 
 class TestCreatePayment:
-    async def test_returns_existing_on_duplicate_key(self, mock_db, payment_request):
+    async def test_returns_existing_on_duplicate_key(
+        self, mock_db, payment_request
+    ):
         from app.db.models.payment import Payment
+
         existing_payment = Payment(
             id=uuid.uuid4(),
             idempotency_key=payment_request.idempotency_key,
@@ -44,7 +48,9 @@ class TestCreatePayment:
         mock_result.scalar_one_or_none.return_value = existing_payment
         mock_db.execute.return_value = mock_result
 
-        with patch("app.services.stripe.payment_service.stripe.PaymentIntent.create") as mock_create:
+        with patch(
+            "app.services.stripe.payment_service.stripe.PaymentIntent.create"
+        ) as mock_create:
             service = PaymentService(mock_db)
             response = await service.create_payment(payment_request)
 

@@ -7,21 +7,19 @@ Lifespan pattern (FastAPI 0.95+):
   - Resources after yield are cleaned up on shutdown
   - This pattern works correctly with async context managers
 """
+import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-import time
 
+from app.api.routes import payments
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
-from app.db.database import engine, Base
-
-# Import all models so SQLAlchemy knows about them for create_all
+from app.db.database import Base, engine
 from app.db.models import payment, webhook_event  # noqa: F401
-from app.api.routes import payments
 
 settings = get_settings()
 configure_logging()

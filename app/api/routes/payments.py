@@ -1,4 +1,5 @@
 import uuid
+
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,15 +31,17 @@ async def create_payment(
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail={"code": err.code, "message": err.message, "decline_code": err.decline_code},
-        )
+        ) from e
     except stripe.InvalidRequestError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
     except Exception as e:
         logger.error("payment_creation_failed", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Payment creation failed. Please retry.",
-        )
+        ) from e
 
 
 @router.get("/{payment_id}", response_model=PaymentResponse)
@@ -67,11 +70,17 @@ async def handle_webhook(
 
     try:
         event = handler.verify_and_parse(payload, stripe_signature)
-    except stripe.SignatureVerificationError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature")
+    except stripe.SignatureVerificationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid signature",
+        ) from e
 
     try:
         return await handler.process_event(event)
     except Exception as e:
         logger.error("webhook_processing_failed", error=str(e), exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Webhook processing failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Webhook processing failed",
+        ) from e
