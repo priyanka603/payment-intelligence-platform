@@ -1,14 +1,12 @@
 # Payment Intelligence Platform
 
-A production-grade payment processing and fraud intelligence backend built with FastAPI, Stripe, and PostgreSQL. Demonstrates core payments engineering fundamentals — idempotency, webhook verification, ACID transactions, and retry logic — with an AI-powered fraud detection layer built on LangChain and OpenAI.
+A production-grade payment processing and fraud intelligence backend built with FastAPI, Stripe, and PostgreSQL. Demonstrates core payments engineering fundamentals — idempotency, webhook verification, ACID transactions, and retry logic — with an AI-powered fraud detection layer built on LangChain and Groq.
 
 Built as a portfolio project targeting payments engineering roles.
 
 ---
 
 ## Architecture
-
-```
 ┌─────────────────────────────────────────────────────────┐
 │                      FastAPI Layer                       │
 │         POST /payments   GET /payments/:id   /health     │
@@ -61,6 +59,9 @@ Stripe API retries use `sleep(random(0, min(cap, base * 2^attempt)))`. The jitte
 ### ACID transactions
 All financial writes go through SQLAlchemy async sessions with explicit commit/rollback. The `get_db()` dependency commits on success and rolls back on any exception — atomically.
 
+### AI as enhancement, never dependency
+The fraud scoring layer wraps all LLM calls in try/except with automatic fallback to rule-based scoring. If Groq is unavailable, payments still process — the AI failure is logged and the fallback score is flagged with `rule_based_fallback` so it's always visible which path ran.
+
 ---
 
 ## Tech Stack
@@ -70,7 +71,7 @@ All financial writes go through SQLAlchemy async sessions with explicit commit/r
 | API framework | FastAPI + Uvicorn |
 | Payments | Stripe Python SDK v7 |
 | Database | PostgreSQL 16 + SQLAlchemy 2.0 async |
-| AI / ML | LangChain + OpenAI + FAISS |
+| AI / ML | LangChain + Groq (Llama3) + FAISS |
 | Validation | Pydantic v2 |
 | Logging | structlog (JSON in prod, pretty in dev) |
 | Infra | Docker + Docker Compose |
@@ -84,7 +85,7 @@ All financial writes go through SQLAlchemy async sessions with explicit commit/r
 ### Prerequisites
 - Docker Desktop
 - Stripe test account ([dashboard.stripe.com](https://dashboard.stripe.com))
-- OpenAI API key
+- Groq API key ([console.groq.com](https://console.groq.com))
 
 ### Setup
 
@@ -95,7 +96,7 @@ cd payment-intelligence-platform
 
 # 2. Create your .env file
 cp .env.template .env
-# Fill in your Stripe test keys and OpenAI key
+# Fill in your Stripe test keys and Groq API key
 
 # 3. Generate a secret key
 python -c "import secrets; print(secrets.token_hex(32))"
@@ -113,6 +114,33 @@ curl http://localhost:8000/health
 ```
 
 Open Swagger UI: http://localhost:8000/docs
+
+---
+
+## AI Fraud Detection
+
+Every payment is scored in real time using Llama3 via Groq. The model analyses the payment and returns a structured risk assessment:
+
+```json
+{
+  "risk_score": 0.92,
+  "risk_level": "high",
+  "flags": ["unusually high amount", "missing customer ID", "suspicious description"],
+  "recommendation": "block"
+}
+```
+
+Legitimate payment:
+```json
+{
+  "risk_score": 0.05,
+  "risk_level": "low",
+  "flags": [],
+  "recommendation": "approve"
+}
+```
+
+If the AI layer fails for any reason, scoring falls back to a rule-based engine automatically. The payment always goes through — AI is an enhancement, never a single point of failure.
 
 ---
 
@@ -140,7 +168,8 @@ Response:
     "stripe_payment_intent_id": "pi_3TaF7ZGhCLd2EJ9Y06us6xeG",
     "amount": 1000,
     "currency": "eur",
-    "status": "pending"
+    "status": "pending",
+    "risk_score": 0.05
   },
   "client_secret": "pi_3TaF7ZGhCLd2EJ9Y...",
   "idempotent": false
@@ -176,7 +205,6 @@ Use any future expiry date and any 3-digit CVC.
 ---
 
 ## Project Structure
-
 ```
 payment-intelligence-platform/
 ├── app/
@@ -220,9 +248,8 @@ DATABASE_URL=postgresql+asyncpg://... pytest tests/ -v
 | `STRIPE_SECRET_KEY` | Stripe secret key (`sk_test_...`) |
 | `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_test_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signing secret (`whsec_...`) |
-| `OPENAI_API_KEY` | OpenAI API key for fraud scoring |
+| `GROQ_API_KEY` | Groq API key for Llama3 fraud scoring |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `SECRET_KEY` | 32-byte hex for HMAC signing |
 
 Never commit `.env`. Use `.env.template` as reference.
-
