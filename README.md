@@ -7,6 +7,7 @@ Built as a portfolio project targeting payments engineering roles.
 ---
 
 ## Architecture
+```
 ┌─────────────────────────────────────────────────────────┐
 │                      FastAPI Layer                       │
 │         POST /payments   GET /payments/:id   /health     │
