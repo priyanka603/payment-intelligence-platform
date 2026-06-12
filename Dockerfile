@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir \
     langchain-openai \
     langchain-community \
     langchain-google-genai \
+    langchain-groq \
     openai \
     pydantic \
     pydantic-settings \

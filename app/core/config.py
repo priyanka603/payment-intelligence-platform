@@ -26,7 +26,8 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = Field(None, description="sk-... (optional)")
     openai_model: str = "gpt-4o-mini"
 
-    google_api_key: SecretStr = Field(..., description="Gemini API key")
+    google_api_key: SecretStr | None = Field(None, description="Gemini API key (optional)")
+    groq_api_key: SecretStr = Field(..., description="Groq API key")
 
     redis_url: str = "redis://localhost:6379/0"
 
@@ -52,7 +53,13 @@ class Settings(BaseSettings):
 
     @property
     def google_key(self) -> str:
+        if self.google_api_key is None:
+            return ""
         return self.google_api_key.get_secret_value()
+
+    @property
+    def groq_key(self) -> str:
+        return self.groq_api_key.get_secret_value()
 
 
 @lru_cache

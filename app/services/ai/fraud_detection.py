@@ -2,7 +2,7 @@ import json
 import traceback
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from pydantic import BaseModel
 
 from app.core.config import get_settings
@@ -22,44 +22,39 @@ class FraudAssessment(BaseModel):
 FRAUD_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        """You are a payments fraud detection system. Analyze the payment and return ONLY a JSON object.
-
-Rules:
-- risk_score: float between 0.0 (no risk) and 1.0 (certain fraud)
-- risk_level: "low" (0.0-0.3), "medium" (0.31-0.7), "high" (0.71-1.0)
-- flags: list of specific risk signals observed, empty list if none
-- recommendation: one of "approve", "review", "block"
-
-Respond ONLY with valid JSON, no explanation, no markdown, no backticks.
-
-Example:
-{{"risk_score": 0.15, "risk_level": "low", "flags": [], "recommendation": "approve"}}""",
+        "You are a payments fraud detection system. "
+        "Analyze the payment and return ONLY a JSON object.\n\n"
+        "Rules:\n"
+        "- risk_score: float between 0.0 (no risk) and 1.0 (certain fraud)\n"
+        "- risk_level: 'low' (0.0-0.3), 'medium' (0.31-0.7), 'high' (0.71-1.0)\n"
+        "- flags: list of specific risk signals observed, empty list if none\n"
+        "- recommendation: one of 'approve', 'review', 'block'\n\n"
+        "Respond ONLY with valid JSON, no explanation, no markdown, no backticks.\n\n"
+        'Example: {{"risk_score": 0.15, "risk_level": "low", '
+        '"flags": [], "recommendation": "approve"}}',
     ),
     (
         "human",
-        """Analyze this payment for fraud risk:
-
-Amount: {amount} {currency}
-Customer ID: {customer_id}
-Description: {description}
-Metadata: {metadata}
-
-Consider:
-- Unusually high amounts for the currency
-- Missing or suspicious customer ID
-- Suspicious patterns in description or metadata
-- Round numbers that suggest card testing
-
-Return JSON only.""",
+        "Analyze this payment for fraud risk:\n\n"
+        "Amount: {amount} {currency}\n"
+        "Customer ID: {customer_id}\n"
+        "Description: {description}\n"
+        "Metadata: {metadata}\n\n"
+        "Consider:\n"
+        "- Unusually high amounts for the currency\n"
+        "- Missing or suspicious customer ID\n"
+        "- Suspicious patterns in description or metadata\n"
+        "- Round numbers that suggest card testing\n\n"
+        "Return JSON only.",
     ),
 ])
 
 
 class FraudDetectionService:
     def __init__(self) -> None:
-        self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
-            google_api_key=settings.google_key,
+        self.llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            api_key=settings.groq_key,
             temperature=0,
         )
         self.chain = FRAUD_PROMPT | self.llm
@@ -73,7 +68,7 @@ class FraudDetectionService:
         metadata: dict | None = None,
     ) -> FraudAssessment:
         """
-        Score a payment for fraud risk using Gemini.
+        Score a payment for fraud risk using Groq (Llama3).
         Falls back to rule-based scoring on any error so payments
         are never blocked by AI layer failure.
         """
@@ -133,7 +128,7 @@ class FraudDetectionService:
         description: str | None,
     ) -> FraudAssessment:
         """
-        Rule-based fallback when Gemini is unavailable.
+        Rule-based fallback when Groq is unavailable.
         Same interface, same return type — payment flow never breaks.
         """
         score = 0.0
@@ -151,10 +146,11 @@ class FraudDetectionService:
             flags.append("anonymous_customer")
 
         suspicious_words = ["test", "dummy", "fake", "xxx", "asdf"]
-        if description:
-            if any(word in description.lower() for word in suspicious_words):
-                score += 0.2
-                flags.append("suspicious_description")
+        if description and any(
+            word in description.lower() for word in suspicious_words
+        ):
+            score += 0.2
+            flags.append("suspicious_description")
 
         if amount % 100_000 == 0:
             score += 0.1
