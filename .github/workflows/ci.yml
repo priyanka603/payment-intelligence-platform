@@ -39,6 +39,6 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
           STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           SECRET_KEY: "test-secret-key-only"
         run: pytest tests/ -v --cov=app --cov-report=term-missing
